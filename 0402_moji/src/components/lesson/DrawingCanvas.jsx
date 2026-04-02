@@ -23,27 +23,50 @@ const DrawingCanvas = forwardRef(function DrawingCanvas({ guideChar = null, disa
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    if (guideChar) drawGuide(ctx, canvas.width, canvas.height)
+    if (guideChar) drawGuide(ctx, canvas.width, canvas.height, guideChar)
   }, [guideChar])
 
-  const drawGuide = (ctx, w, h) => {
+  // Two-pass sizing: measure actual glyph bounds, scale to fit, then center precisely.
+  const drawGuide = (ctx, w, h, char) => {
+    const targetSize = Math.min(w, h) * 0.6
+    // Pass 1: measure at target size
+    ctx.font = `${targetSize}px "Noto Sans Georgian", serif`
+    const m1 = ctx.measureText(char)
+    const glyphW = (m1.actualBoundingBoxLeft ?? 0) + (m1.actualBoundingBoxRight ?? targetSize * 0.6)
+    const glyphH = (m1.actualBoundingBoxAscent ?? targetSize * 0.7) + (m1.actualBoundingBoxDescent ?? targetSize * 0.1)
+    // Scale down so the actual glyph fits within 60% of canvas
+    const scaleW = (w * 0.6) / glyphW
+    const scaleH = (h * 0.6) / glyphH
+    const fontSize = targetSize * Math.min(scaleW, scaleH, 1)
+    // Pass 2: measure at final font size
+    ctx.font = `${fontSize}px "Noto Sans Georgian", serif`
+    const m2 = ctx.measureText(char)
+    const asc  = m2.actualBoundingBoxAscent  ?? fontSize * 0.7
+    const desc = m2.actualBoundingBoxDescent ?? fontSize * 0.1
+    const left = m2.actualBoundingBoxLeft    ?? 0
+    const right= m2.actualBoundingBoxRight   ?? fontSize * 0.6
+    // Center on actual glyph extents
+    const x = (w - (left + right)) / 2 + left
+    const y = (h - (asc + desc))   / 2 + asc
     ctx.save()
-    ctx.globalAlpha = 0.15
+    ctx.globalAlpha = 0.12
     ctx.fillStyle = '#000'
-    ctx.font = `bold ${Math.min(w, h) * 0.7}px "Noto Sans Georgian", serif`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillText(guideChar, w / 2, h / 2)
+    ctx.textBaseline = 'alphabetic'
+    ctx.textAlign = 'left'
+    ctx.fillText(char, x - left, y)
     ctx.restore()
   }
 
-  // Re-render guide when guideChar changes or canvas resizes
+  // Re-render guide when guideChar changes
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    if (guideChar) drawGuide(ctx, canvas.width, canvas.height)
+    if (guideChar) {
+      const rect = canvas.getBoundingClientRect()
+      drawGuide(ctx, rect.width, rect.height, guideChar)
+    }
   }, [guideChar])
 
   // Handle canvas sizing
@@ -53,14 +76,13 @@ const DrawingCanvas = forwardRef(function DrawingCanvas({ guideChar = null, disa
     const resize = () => {
       const rect = canvas.getBoundingClientRect()
       const dpr = window.devicePixelRatio || 1
-      // Save existing drawing
       const imageData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height)
       canvas.width = rect.width * dpr
       canvas.height = rect.height * dpr
       const ctx = canvas.getContext('2d')
       ctx.scale(dpr, dpr)
       ctx.putImageData(imageData, 0, 0)
-      if (guideChar) drawGuide(ctx, rect.width, rect.height)
+      if (guideChar) drawGuide(ctx, rect.width, rect.height, guideChar)
     }
     const observer = new ResizeObserver(resize)
     observer.observe(canvas)
@@ -69,28 +91,23 @@ const DrawingCanvas = forwardRef(function DrawingCanvas({ guideChar = null, disa
     const dpr = window.devicePixelRatio || 1
     canvas.width = rect.width * dpr
     canvas.height = rect.height * dpr
-    canvas.getContext('2d').scale(dpr, dpr)
-    if (guideChar) {
-      drawGuide(canvas.getContext('2d'), rect.width, rect.height)
-    }
+    const ctx = canvas.getContext('2d')
+    ctx.scale(dpr, dpr)
+    if (guideChar) drawGuide(ctx, rect.width, rect.height, guideChar)
     return () => observer.disconnect()
   }, [])
 
   const getPos = (e, canvas) => {
     const rect = canvas.getBoundingClientRect()
     const src = e.touches ? e.touches[0] : e
-    return {
-      x: src.clientX - rect.left,
-      y: src.clientY - rect.top,
-    }
+    return { x: src.clientX - rect.left, y: src.clientY - rect.top }
   }
 
   const startDraw = (e) => {
     if (disabled) return
     e.preventDefault()
     drawing.current = true
-    const canvas = canvasRef.current
-    lastPos.current = getPos(e, canvas)
+    lastPos.current = getPos(e, canvasRef.current)
   }
 
   const moveDraw = (e) => {

@@ -232,6 +232,66 @@ html, body {
   align-items: center;
   justify-content: space-between;
 }
+.mode-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Guide toggle button */
+.guide-toggle {
+  font-size: .75rem;
+  font-weight: 700;
+  font-family: inherit;
+  padding: 4px 10px;
+  border-radius: 20px;
+  cursor: pointer;
+  border: 1.5px solid;
+  transition: background .15s, color .15s;
+}
+.guide-toggle--on {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+}
+.guide-toggle--off {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--border);
+}
+
+/* Example word card */
+.example-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 8px 14px;
+}
+.example-word {
+  font-family: 'Noto Sans Georgian', serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.example-highlight {
+  color: var(--red);
+  background: #fff0f0;
+  border-radius: 3px;
+  font-style: normal;
+}
+.example-arrow {
+  color: var(--muted);
+  font-size: .9rem;
+  flex-shrink: 0;
+}
+.example-meaning {
+  font-size: .9rem;
+  color: var(--muted);
+  flex: 1;
+}
 .char-info { display: flex; align-items: center; gap: 8px; }
 .romanization {
   font-size: 2rem;
